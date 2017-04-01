@@ -73,45 +73,55 @@ FILTER var.firstName == 'Pierre' && (var.birthPlace IN ['Paris', 'Los Angeles'] 
 
 ## Usage
 
+Example using [Arangolite](https://github.com/solher/arangolite):
+
 ```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	filters "github.com/solher/arangofilters"
+	"github.com/solher/arangolite"
+	"github.com/solher/arangolite/requests"
+)
+
 func main() {
-  db := arangolite.New(true)
-  db.Connect("http://localhost:8000", "testDB", "user", "password")
+	ctx := context.Background()
 
-  filter, err := filters.FromJSON(`{"limit": 2}`)
-  if err != nil {
-    panic(err)
-  }
+	db := arangolite.NewDatabase(
+		arangolite.OptEndpoint("http://localhost:8529"),
+		arangolite.OptBasicAuth("user", "password"),
+		arangolite.OptDatabaseName("testDB"),
+	)
 
-  aqlFilter, err := filters.ToAQL("n", filter)
-  if err != nil {
-    panic(err)
-  }
+	if err := db.Connect(ctx); err != nil {
+		panic(err)
+	}
 
-  r, _ := db.Run(arangolite.NewQuery(`
+	filter, err := filters.FromJSON(`{"limit": 2}`)
+	if err != nil {
+		panic(err)
+	}
+
+	aqlFilter, err := filters.ToAQL("n", filter)
+	if err != nil {
+		panic(err)
+	}
+
+	r := requests.NewAQL(`
     FOR n
-    IN nodes
+    IN documents
     %s
     RETURN n
-  `, aqlFilter))
+  `, aqlFilter)
 
-  nodes := []Node{}
-  json.Unmarshal(r, &nodes)
+	documents := []arangolite.Document{}
+	if err := db.Run(ctx, r, documents); err != nil {
+		panic(err)
+	}
 
-  fmt.Printf("%v", nodes)
+	fmt.Println(documents)
 }
-
-// OUTPUT EXAMPLE:
-// [
-//   {
-//     "_id": "nodes/47473545749",
-//     "_rev": "47473545749",
-//     "_key": "47473545749"
-//   },
-//   {
-//     "_id": "nodes/47472824853",
-//     "_rev": "47472824853",
-//     "_key": "47472824853"
-//   }
-// ]
 ```
