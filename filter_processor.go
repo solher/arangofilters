@@ -232,15 +232,19 @@ func (fp *filterProcessor) processUnaryCondition(buffer *bytes.Buffer, attribute
 				return err
 			}
 
+			if buffer.Len() != 0 {
+				buffer.WriteString(operator)
+			}
+
 			buffer.WriteString("LIKE(")
 			buffer.WriteString(fp.VarName)
 			buffer.WriteRune('.')
 			buffer.WriteString(paramMap["text"].(string))
 			buffer.WriteString(", ")
 			fp.writeQuotedString(buffer, paramMap["search"].(string))
-			buffer.WriteString(", ")
 			caseInsensitive, ok := paramMap["case_insensitive"]
 			if ok && caseInsensitive.(bool) {
+				buffer.WriteString(", ")
 				buffer.WriteString("true")
 			}
 			buffer.WriteRune(')')
@@ -268,7 +272,7 @@ func (fp *filterProcessor) processOperation(buffer *bytes.Buffer, attribute, ope
 		if condition != "null" {
 			fp.processSimpleOperationStr(buffer, attribute, sign, condition)
 		} else {
-			fp.processSimpleOperation(buffer, attribute, sign, condition)
+			fp.processSimpleOperation(buffer, attribute, sign, "null")
 		}
 
 	case float64:
@@ -312,7 +316,7 @@ func (fp *filterProcessor) processOperation(buffer *bytes.Buffer, attribute, ope
 				buffer.WriteString(strconv.FormatFloat(c, 'f', -1, 64))
 
 			default:
-				return fmt.Errorf("unrecognized type in: %v", reflect.TypeOf(condition))
+				return fmt.Errorf("condition '%v' type '%v' must be a bool, string or float64", condition, reflect.TypeOf(condition))
 			}
 
 			if i < len(condition)-1 {
@@ -322,6 +326,8 @@ func (fp *filterProcessor) processOperation(buffer *bytes.Buffer, attribute, ope
 
 		buffer.WriteString(closeArrayAQL)
 
+	case int:
+		return fmt.Errorf("condition '%v' type int must be type float64", condition)
 	default:
 		return fmt.Errorf("unrecognized type: %v", reflect.TypeOf(condition))
 	}
@@ -347,7 +353,7 @@ func (fp *filterProcessor) processSimpleOperationStr(buffer *bytes.Buffer, attri
 
 func (fp *filterProcessor) writeQuotedString(buffer *bytes.Buffer, str string) {
 	buffer.WriteRune('\'')
-	buffer.WriteString(str)
+	buffer.WriteString(escapeString(str))
 	buffer.WriteRune('\'')
 }
 
@@ -359,7 +365,7 @@ func (fp *filterProcessor) checkAndOrCondition(condition interface{}) ([]map[str
 	}
 
 	if condType != reflect.TypeOf([]interface{}{}) {
-		return nil, fmt.Errorf("invalid condition, must be an array: %v", condition)
+		return nil, fmt.Errorf("invalid condition, expected an array but got '%v' with type '%v'", condition, reflect.TypeOf(condition))
 	}
 
 	arrCondition := condition.([]interface{})
@@ -368,7 +374,7 @@ func (fp *filterProcessor) checkAndOrCondition(condition interface{}) ([]map[str
 
 	for _, c := range arrCondition {
 		if reflect.TypeOf(c) != mapType {
-			return nil, fmt.Errorf("invalid condition, values are present: %v", condition)
+			return nil, fmt.Errorf("invalid condition, expected a map but got '%v' with type '%v'", condition, reflect.TypeOf(condition))
 		}
 
 		mapArr = append(mapArr, c.(map[string]interface{}))
@@ -435,4 +441,8 @@ func (fp *filterProcessor) checkAQLOperators(op string, c chan error) {
 	}
 
 	c <- nil
+}
+
+func escapeString(str string) string {
+	return strings.Replace(str, "'", "\\'", -1)
 }
