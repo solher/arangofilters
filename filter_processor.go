@@ -87,7 +87,7 @@ func (fp *filterProcessor) Process(f *Filter) (*processedFilter, error) {
 				split[1] = strings.ToUpper(split[1])
 			}
 
-			processedSort = fmt.Sprintf("%s%s.%s %s, ", processedSort, fp.VarName, split[0], split[1])
+			processedSort = fmt.Sprintf("%s%s.'%s' %s, ", processedSort, fp.VarName, split[0], split[1])
 		}
 
 		pf.Sort = processedSort[:len(processedSort)-2]
@@ -239,7 +239,7 @@ func (fp *filterProcessor) processUnaryCondition(buffer *bytes.Buffer, attribute
 			buffer.WriteString("LIKE(")
 			buffer.WriteString(fp.VarName)
 			buffer.WriteRune('.')
-			buffer.WriteString(paramMap["text"].(string))
+			fp.writeQuotedString(buffer, paramMap["text"].(string))
 			buffer.WriteString(", ")
 			fp.writeQuotedString(buffer, paramMap["search"].(string))
 			caseInsensitive, ok := paramMap["case_insensitive"]
@@ -297,7 +297,7 @@ func (fp *filterProcessor) processOperation(buffer *bytes.Buffer, attribute, ope
 	case []interface{}:
 		buffer.WriteString(fp.VarName)
 		buffer.WriteRune('.')
-		buffer.WriteString(attribute)
+		fp.writeQuotedString(buffer, attribute)
 		buffer.WriteString(inArrayAQL + openArrayAQL)
 
 		for i, c := range condition {
@@ -338,7 +338,7 @@ func (fp *filterProcessor) processOperation(buffer *bytes.Buffer, attribute, ope
 func (fp *filterProcessor) processSimpleOperation(buffer *bytes.Buffer, attribute, sign, condition string) {
 	buffer.WriteString(fp.VarName)
 	buffer.WriteRune('.')
-	buffer.WriteString(attribute)
+	fp.writeQuotedString(buffer, attribute)
 	buffer.WriteString(sign)
 	buffer.WriteString(condition)
 }
@@ -346,7 +346,7 @@ func (fp *filterProcessor) processSimpleOperation(buffer *bytes.Buffer, attribut
 func (fp *filterProcessor) processSimpleOperationStr(buffer *bytes.Buffer, attribute, sign, condition string) {
 	buffer.WriteString(fp.VarName)
 	buffer.WriteRune('.')
-	buffer.WriteString(attribute)
+	fp.writeQuotedString(buffer, attribute)
 	buffer.WriteString(sign)
 	fp.writeQuotedString(buffer, condition)
 }

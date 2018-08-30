@@ -58,7 +58,7 @@ AQL:
 ```
 LIMIT 1, 2
 SORT var.age DESC, var.money ASC
-FILTER var.firstName == 'Pierre' && (var.birthPlace IN ['Paris', 'Los Angeles'] || var.age >= 18) && LIKE(var.lastName, 'R%', true)
+FILTER var.'firstName' == 'Pierre' && (var.'birthPlace' IN ['Paris', 'Los Angeles'] || var.'age' >= 18) && LIKE(var.'lastName', 'R%', true)
 ```
 
 ## Operators
