@@ -359,7 +359,7 @@ func (fp *filterProcessor) writeQuotedString(buffer *bytes.Buffer, str string) {
 
 func (fp *filterProcessor) writeQuotedAttribute(buffer *bytes.Buffer, str string) {
 	buffer.WriteRune('`')
-	buffer.WriteString(escapeString(str))
+	buffer.WriteString(escapeAttribute(str))
 	buffer.WriteRune('`')
 }
 

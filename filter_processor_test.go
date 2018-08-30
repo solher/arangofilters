@@ -345,3 +345,9 @@ func TestEscapeString(t *testing.T) {
 	s := escapeString("O'Hare")
 	a.Equal("O\\'Hare", s)
 }
+
+func TestEscapeAttribute(t *testing.T) {
+	a, _ := newAssertRequire(t)
+	s := escapeAttribute("O`Hare")
+	a.Equal("O\\`Hare", s)
+}
