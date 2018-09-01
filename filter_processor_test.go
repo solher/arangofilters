@@ -89,6 +89,17 @@ var likeWhereFilter = &Filter{
 	},
 }
 
+var mixedLikeWhereFilter = &Filter{
+	Where: []map[string]interface{}{
+		{"like": map[string]interface{}{
+			"text":             "firstName",
+			"search":           "%fab%",
+			"case_insensitive": true,
+		}},
+		{"archived": map[string]interface{}{"eq": false}},
+	},
+}
+
 func newAssertRequire(t *testing.T) (*assert.Assertions, *require.Assertions) {
 	a := assert.New(t)
 	r := require.New(t)
@@ -135,7 +146,7 @@ func TestProcessSortFilter(t *testing.T) {
 	a, r := newAssertRequire(t)
 	p, err := fp.Process(sortFilter)
 	r.NoError(err)
-	a.Equal("var.firstName ASC, var.lastName DESC, var.age ASC", p.Sort)
+	a.Equal("var.`firstName` ASC, var.`lastName` DESC, var.`age` ASC", p.Sort)
 }
 
 func TestProcessEmptySortFilter(t *testing.T) {
@@ -166,16 +177,16 @@ func TestProcessBasicWhereFilter(t *testing.T) {
 	split := strings.Split(p.Where, " && ")
 	a.Equal(10, len(split))
 	expected := []string{
-		`var.awesome == true`,
-		`var.graduated IN [2010, 2015]`,
-		`var.avg IN [15.5, 13.24]`,
-		`var.birthPlace IN ['Chalon', 'Macon']`,
-		`var.password == 'qwertyuiop'`,
-		`var.age == 22`,
-		`var.money == 3000.55`,
-		`var.notAwesome == false`,
-		`var.bools IN [true, false]`,
-		`var.strWithQuote == 'O\'Hare'`,
+		"var.`awesome` == true",
+		"var.`graduated` IN [2010, 2015]",
+		"var.`avg` IN [15.5, 13.24]",
+		"var.`birthPlace` IN ['Chalon', 'Macon']",
+		"var.`password` == 'qwertyuiop'",
+		"var.`age` == 22",
+		"var.`money` == 3000.55",
+		"var.`notAwesome` == false",
+		"var.`bools` IN [true, false]",
+		"var.`strWithQuote` == 'O\\'Hare'",
 	}
 	for _, s := range split {
 		a.Contains(expected, s)
@@ -186,14 +197,14 @@ func TestProcessOrWhereFilter(t *testing.T) {
 	a, r := newAssertRequire(t)
 	p, err := fp.Process(orWhereFilter)
 	r.NoError(err)
-	a.Equal(`(var.lastName == 'O\'Connor' || var.age > 23 || var.age < 26)`, p.Where)
+	a.Equal("(var.`lastName` == 'O\\'Connor' || var.`age` > 23 || var.`age` < 26)", p.Where)
 }
 
 func TestProcessAndWhereFilter(t *testing.T) {
 	a, r := newAssertRequire(t)
 	p, err := fp.Process(andWhereFilter)
 	r.NoError(err)
-	a.Equal(`(var.firstName != 'Toto' && var.money == 200.5)`, p.Where)
+	a.Equal("(var.`firstName` != 'Toto' && var.`money` == 200.5)", p.Where)
 }
 
 func TestProcessNotWhereFilter(t *testing.T) {
@@ -203,8 +214,8 @@ func TestProcessNotWhereFilter(t *testing.T) {
 	split := strings.Split(p.Where, " && ")
 	a.Equal(2, len(split))
 	expected := []string{
-		`!(var.firstName == 'D\'Arcy')`,
-		`!((var.lastName == 'Herfray' || var.money >= 0 || var.money <= 1000.5))`,
+		"!(var.`firstName` == 'D\\'Arcy')",
+		"!((var.`lastName` == 'Herfray' || var.`money` >= 0 || var.`money` <= 1000.5))",
 	}
 	for _, s := range split {
 		a.Contains(expected, s)
@@ -217,8 +228,22 @@ func TestProcessLikeWhereFilter(t *testing.T) {
 	r.NoError(err)
 	split := strings.Split(p.Where, " && ")
 	expected := []string{
-		`LIKE(var.firstName, 'fab%', true)`,
-		`LIKE(var.lastName, 'Her%')`,
+		"LIKE(var.`firstName`, 'fab%', true)",
+		"LIKE(var.`lastName`, 'Her%')",
+	}
+	for _, s := range split {
+		a.Contains(expected, s)
+	}
+}
+
+func TestProcessMixedLikeWhereFilter(t *testing.T) {
+	a, r := newAssertRequire(t)
+	p, err := fp.Process(mixedLikeWhereFilter)
+	r.NoError(err)
+	split := strings.Split(p.Where, " && ")
+	expected := []string{
+		"LIKE(var.`firstName`, '%fab%', true)",
+		"var.`archived` == false",
 	}
 	for _, s := range split {
 		a.Contains(expected, s)
@@ -319,4 +344,10 @@ func TestEscapeString(t *testing.T) {
 	a, _ := newAssertRequire(t)
 	s := escapeString("O'Hare")
 	a.Equal("O\\'Hare", s)
+}
+
+func TestEscapeAttribute(t *testing.T) {
+	a, _ := newAssertRequire(t)
+	s := escapeAttribute("O`Hare")
+	a.Equal("O\\`Hare", s)
 }
